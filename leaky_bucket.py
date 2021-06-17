@@ -1,6 +1,6 @@
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(threadName)s %(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 from threading import Thread, Lock
 
@@ -8,10 +8,7 @@ import time
 
 
 class LeakyBucket:
-  """
-  Naive implementation of a leaky bucket that can be used as a rate limiter.
-  """
-    def __init__(self, limit: int, regen_rate_per_sec: int):
+    def __init__(self, limit: int, regen_rate_per_sec: float):
         self.limit = limit
         self.tokens = limit
         self.regen_rate_per_sec = regen_rate_per_sec
@@ -56,12 +53,23 @@ class LeakyBucket:
 
 
 if __name__ == '__main__':
-    bucket = LeakyBucket(3, 1)
+    bucket = LeakyBucket(15, 2.72)
     bucket.start_regeneration()
-    
-    
-    for i in range(10):
-        bucket.consume_one()
-        logging.info(f'[{i}] - Doing the thing')
-    print('Done!')
+    cnt = 0
+
+
+    def do_thing(bucket: LeakyBucket):
+        for i in range(10):
+            bucket.consume_one()
+            logging.info(f'Iteration :[{i}] - Doing the thing')
+
+
+    threads = [Thread(target=lambda : do_thing(bucket)) for _ in range(15)] 
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
+
     bucket.stop_regeneration()
